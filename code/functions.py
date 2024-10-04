@@ -193,6 +193,13 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]])
                 raise ValueError(
                     "The second value in mask's values has to be 'L_SC1', 'L_SC2' or 'L_CODE_LPP'"
                 )
+            if len(mask) == 1:
+                pass
+            elif mask[k][2] not in ["and", "or"]:
+                    raise ValueError(
+                        "The third value in mask's values has to be whether 'and' or 'or'"
+                    )
+            
 
     elements = os.listdir("../Open-LPP-data/base_complete")
     nb_LPP_codes = {}
@@ -202,45 +209,61 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]])
             encoding="ISO-8859-1",
             sep=";",
         )
+        final_mask = None
         if mask == {}:
             pass
         else:
             for filter in mask:
                 if (mask[filter][0] == "equality") & (mask[filter][1] == "L_SC1"):
-                    final_mask = df[mask[filter][1]] == filter
+                    new_mask = df[mask[filter][1]] == filter
                 elif (mask[filter][0] == "equality") & (mask[filter][1] == "L_SC2"):
-                    final_mask = df[mask[filter][1]] == filter
+                    new_mask = df[mask[filter][1]] == filter
 
                 elif (mask[filter][0] == "equality") & (mask[filter][1] == "L_CODE_LPP"):
-                    final_mask = df[mask[filter][1]] == filter
+                    new_mask = df[mask[filter][1]] == filter
 
                 elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_SC1"):
-                    final_mask = df[mask[filter][1]].str.contains(filter)
+                    regex_pattern = fr'\b{filter}\b'
+                    new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
 
                 elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_SC2"):
-                    final_mask = df[mask[filter][1]].str.contains(filter)
+                    regex_pattern = fr'\b{filter}\b'
+                    new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
 
                 elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_CODE_LPP"):
-                    final_mask = df[mask[filter][1]].str.contains(filter)
-
+                    regex_pattern = fr'\b{filter}\b'
+                    new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
+                
                 print(i + 2014)
-                df = df[final_mask]
+                if final_mask is None:
+                    final_mask=new_mask
+                else:
+                    if mask[filter][2] == "and":
+                        final_mask = final_mask & new_mask
+                    else:
+                        final_mask = final_mask | new_mask
+
+            df = df[final_mask]
 
         df = pd.DataFrame(
             {
                 "L_SC1": df["L_SC1"],
                 "L_SC2": df["L_SC2"],
                 "CODE_LPP": df["CODE_LPP"],
+                "L_CODE_LPP": df["L_CODE_LPP"],
                 "Quantity": df["QTE"],
                 "Financing": df["REM"],
             }
         )
+
+        print(df[["L_CODE_LPP"]].head(10))  # pour vérifier manuellement si les filtres sont bien appliqués
+
         df.reset_index(inplace=True)
         df.drop(columns="index", inplace=True)
         df["Total"] = df["Quantity"] * df["Financing"]
         sum = df["Total"].sum()
         key = str(i + 2014)
-        nb_LPP_codes[key] = len(df)
+        nb_LPP_codes[key] = len(df["CODE_LPP"].unique().tolist())
 
         if inflation_adjustment == True:
             if sector == "optical":
