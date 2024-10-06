@@ -283,4 +283,14 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]])
     return expenditures, nb_LPP_codes
 
 
-# example : test = gov_exp(inflation_adjustment=False, sector="optical", mask={"LUNETTES":["equality","L_SC2"]})
+# example : whole_hearing = gov_exp(inflation_adjustment=False, sector="hearing", mask={"AUDIOPROTHESES":["contains", "L_SC1", "or"]})
+
+
+def normalized_by_mean(list : List[int]):
+    normalized_list = []
+    mean=np.mean(list)
+    for int in list:
+        int = int/mean
+        normalized_list.append(int)
+
+    return normalized_list
