@@ -173,7 +173,7 @@ def adjusted_price(
 #    return optical_expenditures
 
 
-def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]]): #but this is exclusive mask, I have to do sth that can put a OR condition on the masks
+def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]], indent: int): #but this is exclusive mask, I have to do sth that can put a OR condition on the masks
     expenditures = (
         {}
     )  # we can take a dict as an arg, and iterate on it in a loop to filter 1 time the data with 1 mask, a 2nd time with a 2nd mask, ... until we reach the len of the dict. {"L_SC1":["PROTHESES", (contains or ==)], "L_SC1":["VERRE",(contains or ==)], "L_SC2":["LUNETTES",(contains or ==)]}
@@ -199,13 +199,13 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]])
                     raise ValueError(
                         "The third value in mask's values has to be whether 'and' or 'or'"
                     )
-            
 
     elements = os.listdir("../Open-LPP-data/base_complete")
     nb_LPP_codes = {}
-    for i in range(int(len(elements) / 2)):
+    nb_refunds = {}
+    for i in range(int(len(elements) / 2) - indent):
         df = pd.read_csv(
-            f"../Open-LPP-data/base_complete/OPEN_LPP_{(i+2014)}.CSV",
+            f"../Open-LPP-data/base_complete/OPEN_LPP_{(i+2014+indent)}.CSV",
             encoding="ISO-8859-1",
             sep=";",
         )
@@ -234,7 +234,7 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]])
                     regex_pattern = fr'\b{filter}\b'
                     new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
                 
-                print(i + 2014)
+                print(i + 2014+indent)
                 if final_mask is None:
                     final_mask=new_mask
                 else:
@@ -256,21 +256,23 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]])
             }
         )
 
-        print(df[["L_CODE_LPP"]].head(10))  # pour vérifier manuellement si les filtres sont bien appliqués
+        #print(df[["L_CODE_LPP"]].head(10))  # pour vérifier manuellement si les filtres sont bien appliqués
 
         df.reset_index(inplace=True)
         df.drop(columns="index", inplace=True)
         df["Total"] = df["Quantity"] * df["Financing"]
         sum = df["Total"].sum()
-        key = str(i + 2014)
+        key = str(i + 2014 + indent)
+        print(f"key : {key}")
         nb_LPP_codes[key] = len(df["CODE_LPP"].unique().tolist())
+        nb_refunds[key] = df["Quantity"].sum()
 
         if inflation_adjustment == True:
             if sector == "optical":
                 optical_HICP = pd.read_csv(
                     "../data/HICP/HICP-Corrective-eye-glasses-and-contact-lenses-France-Annual-parts-per-1000.csv"
                 )
-                expenditures[key] = adjusted_price(optical_HICP, sum, i + 2014)
+                expenditures[key] = adjusted_price(optical_HICP, sum, i + 2014 + indent)
             elif sector == "hearing":
                 print(
                     "Hearing HICP is neagligeable face to the amount of money and the trend is the same whether we take HICP in count or not."
@@ -280,10 +282,10 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]])
         else:
             expenditures[key] = sum
 
-    return expenditures, nb_LPP_codes
+    return expenditures, nb_LPP_codes, nb_refunds
 
 
-# example : whole_hearing = gov_exp(inflation_adjustment=False, sector="hearing", mask={"AUDIOPROTHESES":["contains", "L_SC1", "or"]})
+# example : whole_hearing = gov_exp(inflation_adjustment=False, sector="hearing", mask={"AUDIOPROTHESES":["contains", "L_SC1", "or"]}, indent=4)
 
 
 def normalized_by_mean(list : List[int]):
