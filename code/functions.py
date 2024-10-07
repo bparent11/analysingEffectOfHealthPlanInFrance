@@ -234,7 +234,7 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
                     regex_pattern = fr'\b{filter}\b'
                     new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
                 
-                print(i + 2014+indent)
+                #print(i + 2014+indent)
                 if final_mask is None:
                     final_mask=new_mask
                 else:
@@ -263,7 +263,7 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
         df["Total"] = df["Quantity"] * df["Financing"]
         sum = df["Total"].sum()
         key = str(i + 2014 + indent)
-        print(f"key : {key}")
+        #print(f"key : {key}")
         nb_LPP_codes[key] = len(df["CODE_LPP"].unique().tolist())
         nb_refunds[key] = df["Quantity"].sum()
 
@@ -282,7 +282,7 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
         else:
             expenditures[key] = sum
 
-    return expenditures, nb_LPP_codes, nb_refunds
+    return [expenditures, nb_LPP_codes, nb_refunds]
 
 
 # example : whole_hearing = gov_exp(inflation_adjustment=False, sector="hearing", mask={"AUDIOPROTHESES":["contains", "L_SC1", "or"]}, indent=4)
@@ -296,3 +296,15 @@ def normalized_by_mean(list : List[int]):
         normalized_list.append(int)
 
     return normalized_list
+
+
+#problem with JSON serializing (due to int64 format)
+def convert_to_native(obj):
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    else:
+        raise TypeError(f"Type {type(obj)} not serializable")
