@@ -260,8 +260,8 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
 
         df.reset_index(inplace=True)
         df.drop(columns="index", inplace=True)
-        df["Total"] = df["Quantity"] * df["Financing"]
-        sum = df["Total"].sum()
+        sum = df["Financing"].sum()
+        
         key = str(i + 2014 + indent)
         #print(f"key : {key}")
         nb_LPP_codes[key] = len(df["CODE_LPP"].unique().tolist())
