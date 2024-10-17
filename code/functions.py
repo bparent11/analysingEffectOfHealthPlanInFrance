@@ -7,7 +7,7 @@ import json
 from typing import List, Dict
 
 
-def finding_unique_L_SC1():
+def finding_unique_L_SC1(): #gov. expenditures 
     unique_values = []
     elements = os.listdir("../Open-LPP-data/base_complete")
     for i in range(int(len(elements) / 2)):
@@ -25,6 +25,23 @@ def finding_unique_L_SC1():
 
     return unique_values
 
+def finding_unique_L_CODE_LPP(): #complementary insurances expenditures
+    unique_values = []
+    elements = os.listdir("../Open-LPP-data/base_complementaire")
+    for i in range(int(len(elements) / 2)):
+        df = pd.read_csv(
+            f"../Open-LPP-data/base_complementaire/NB_{(i+2014)}_lpp.CSV",
+            encoding="ISO-8859-1",
+            sep=";",
+        )
+        values = df["L_CODE_LPP"].unique().tolist()
+        for value in values:
+            if value in unique_values:
+                pass
+            else:
+                unique_values.append(value)
+
+    return unique_values
 
 def get_L_SC1_SC2_LPP_gov_exp():
     L_SC1 = {}
@@ -132,47 +149,6 @@ def adjusted_price(
 # optical_HICP = pd.read_csv("../data/HICP/HICP-Corrective-eye-glasses-and-contact-lenses-France-Annual-parts-per-1000.csv")
 # adjusted = adjusted_price(optical_HICP, sum, 2023)
 
-
-# def gov_optical_exp(inflation_adjustment): #maybe we can take final_mask as an argument in the function, but I got problem last time I tried it.
-#    optical_expenditures = {} #we can take a dict as an arg, and iterate on it in a loop to filter 1 time the data with 1 mask, a 2nd time with a 2nd mask, ... until we reach the len of the dict. {"L_SC1":["PROTHESES", (contains or ==)], "L_SC1":["VERRE",(contains or ==)], "L_SC2":["LUNETTES",(contains or ==)]}
-#    elements = os.listdir("../Open-LPP-data/base_complete")
-#    for i in range(int(len(elements) / 2)):
-#        df = pd.read_csv(
-#            f"../Open-LPP-data/base_complete/OPEN_LPP_{(i+2014)}.CSV",
-#            encoding="ISO-8859-1",
-#            sep=";",
-#        )
-#        final_mask = (df["L_SC1"] == "PROTHESES OCULAIRES ET FACIALES") & (
-#            df["L_SC2"].str.contains("OCULAIRES|FRAIS")
-#        )
-#        # print(i+2014)
-#        df = df[final_mask]
-#        df = pd.DataFrame(
-#            {
-#                "L_SC2": df["L_SC2"],
-#                "CODE_LPP": df["CODE_LPP"],
-#                "Quantity": df["QTE"],
-#                "Financing": df["REM"],
-#            }
-#        )
-#        df.reset_index(inplace=True)
-#        df.drop(columns="index", inplace=True)
-#        df["Total"] = df["Quantity"] * df["Financing"]
-#        sum = df["Total"].sum()
-#        key = str(i + 2014)
-#
-#        if inflation_adjustment == True:
-#            optical_HICP = pd.read_csv(
-#                "../data/HICP/HICP-Corrective-eye-glasses-and-contact-lenses-France-Annual-parts-per-1000.csv"
-#            )
-#            optical_expenditures[key] = adjusted_price(optical_HICP, sum, i + 2014)
-#            # print("test")
-#        else:
-#            optical_expenditures[key] = sum
-#
-#    return optical_expenditures
-
-
 def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]], indent: int): #but this is exclusive mask, I have to do sth that can put a OR condition on the masks
     expenditures = (
         {}
@@ -203,6 +179,8 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
     elements = os.listdir("../Open-LPP-data/base_complete")
     nb_LPP_codes = {}
     nb_refunds = {}
+    refund_rate = {}
+    base = {}
     for i in range(int(len(elements) / 2) - indent):
         df = pd.read_csv(
             f"../Open-LPP-data/base_complete/OPEN_LPP_{(i+2014+indent)}.CSV",
@@ -253,6 +231,7 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
                 "L_CODE_LPP": df["L_CODE_LPP"],
                 "Quantity": df["QTE"],
                 "Financing": df["REM"],
+                "BASE" : df["BSE"]
             }
         )
 
@@ -261,11 +240,26 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
         df.reset_index(inplace=True)
         df.drop(columns="index", inplace=True)
         sum = df["Financing"].sum()
-        
+        rate = []
         key = str(i + 2014 + indent)
+
+        base_sum = df['BASE'].sum()
+        base[key] = base_sum
+
+        if len(df) == 0:
+            refund_rate[key] = 0
+        else:
+            for i in range(len(df)):
+                if pd.isna(df.loc[i, "Financing"]) or pd.isna(df.loc[i, "BASE"]) or df.loc[i, "BASE"] == 0:
+                    continue
+                else:
+                    rate.append(df.loc[i, "Financing"]/df.loc[i, "BASE"])
+            refund_rate[key] = np.mean(rate)
         #print(f"key : {key}")
+        
         nb_LPP_codes[key] = len(df["CODE_LPP"].unique().tolist())
         nb_refunds[key] = df["Quantity"].sum()
+        
 
         if inflation_adjustment == True:
             if sector == "optical":
@@ -282,8 +276,7 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
         else:
             expenditures[key] = sum
 
-    return [expenditures, nb_LPP_codes, nb_refunds]
-
+    return [expenditures, nb_LPP_codes, nb_refunds, refund_rate, base]
 
 # example : whole_hearing = gov_exp(inflation_adjustment=False, sector="hearing", mask={"AUDIOPROTHESES":["contains", "L_SC1", "or"]}, indent=4)
 
