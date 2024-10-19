@@ -7,7 +7,7 @@ import json
 from typing import List, Dict
 
 
-def finding_unique_L_SC1(): #gov. expenditures 
+def finding_unique_L_SC1():  # gov. expenditures
     unique_values = []
     elements = os.listdir("../Open-LPP-data/base_complete")
     for i in range(int(len(elements) / 2)):
@@ -25,7 +25,8 @@ def finding_unique_L_SC1(): #gov. expenditures
 
     return unique_values
 
-def finding_unique_L_CODE_LPP(): #complementary insurances expenditures
+
+def finding_unique_L_CODE_LPP():  # complementary insurances expenditures
     unique_values = []
     elements = os.listdir("../Open-LPP-data/base_complementaire")
     for i in range(int(len(elements) / 2)):
@@ -42,6 +43,7 @@ def finding_unique_L_CODE_LPP(): #complementary insurances expenditures
                 unique_values.append(value)
 
     return unique_values
+
 
 def get_L_SC1_SC2_LPP_gov_exp():
     L_SC1 = {}
@@ -149,7 +151,10 @@ def adjusted_price(
 # optical_HICP = pd.read_csv("../data/HICP/HICP-Corrective-eye-glasses-and-contact-lenses-France-Annual-parts-per-1000.csv")
 # adjusted = adjusted_price(optical_HICP, sum, 2023)
 
-def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]], indent: int): #but this is exclusive mask, I have to do sth that can put a OR condition on the masks
+
+def gov_exp(
+    inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]], indent: int
+):  # but this is exclusive mask, I have to do sth that can put a OR condition on the masks
     expenditures = (
         {}
     )  # we can take a dict as an arg, and iterate on it in a loop to filter 1 time the data with 1 mask, a 2nd time with a 2nd mask, ... until we reach the len of the dict. {"L_SC1":["PROTHESES", (contains or ==)], "L_SC1":["VERRE",(contains or ==)], "L_SC2":["LUNETTES",(contains or ==)]}
@@ -172,9 +177,9 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
             if len(mask) == 1:
                 pass
             elif mask[k][2] not in ["and", "or"]:
-                    raise ValueError(
-                        "The third value in mask's values has to be whether 'and' or 'or'"
-                    )
+                raise ValueError(
+                    "The third value in mask's values has to be whether 'and' or 'or'"
+                )
 
     elements = os.listdir("../Open-LPP-data/base_complete")
     nb_LPP_codes = {}
@@ -197,24 +202,34 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
                 elif (mask[filter][0] == "equality") & (mask[filter][1] == "L_SC2"):
                     new_mask = df[mask[filter][1]] == filter
 
-                elif (mask[filter][0] == "equality") & (mask[filter][1] == "L_CODE_LPP"):
+                elif (mask[filter][0] == "equality") & (
+                    mask[filter][1] == "L_CODE_LPP"
+                ):
                     new_mask = df[mask[filter][1]] == filter
 
                 elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_SC1"):
-                    regex_pattern = fr'\b{filter}\b'
-                    new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
+                    regex_pattern = rf"\b{filter}\b"
+                    new_mask = df[mask[filter][1]].str.contains(
+                        regex_pattern, case=False, na=False
+                    )
 
                 elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_SC2"):
-                    regex_pattern = fr'\b{filter}\b'
-                    new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
+                    regex_pattern = rf"\b{filter}\b"
+                    new_mask = df[mask[filter][1]].str.contains(
+                        regex_pattern, case=False, na=False
+                    )
 
-                elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_CODE_LPP"):
-                    regex_pattern = fr'\b{filter}\b'
-                    new_mask = df[mask[filter][1]].str.contains(regex_pattern, case=False, na=False)
-                
-                #print(i + 2014+indent)
+                elif (mask[filter][0] == "contains") & (
+                    mask[filter][1] == "L_CODE_LPP"
+                ):
+                    regex_pattern = rf"\b{filter}\b"
+                    new_mask = df[mask[filter][1]].str.contains(
+                        regex_pattern, case=False, na=False
+                    )
+
+                # print(i + 2014+indent)
                 if final_mask is None:
-                    final_mask=new_mask
+                    final_mask = new_mask
                 else:
                     if mask[filter][2] == "and":
                         final_mask = final_mask & new_mask
@@ -231,11 +246,11 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
                 "L_CODE_LPP": df["L_CODE_LPP"],
                 "Quantity": df["QTE"],
                 "Financing": df["REM"],
-                "BASE" : df["BSE"]
+                "BASE": df["BSE"],
             }
         )
 
-        #print(df[["L_CODE_LPP"]].head(10))  # pour vérifier manuellement si les filtres sont bien appliqués
+        # print(df[["L_CODE_LPP"]].head(10))  # pour vérifier manuellement si les filtres sont bien appliqués
 
         df.reset_index(inplace=True)
         df.drop(columns="index", inplace=True)
@@ -243,23 +258,26 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
         rate = []
         key = str(i + 2014 + indent)
 
-        base_sum = df['BASE'].sum()
+        base_sum = df["BASE"].sum()
         base[key] = base_sum
 
         if len(df) == 0:
             refund_rate[key] = 0
         else:
             for i in range(len(df)):
-                if pd.isna(df.loc[i, "Financing"]) or pd.isna(df.loc[i, "BASE"]) or df.loc[i, "BASE"] == 0:
+                if (
+                    pd.isna(df.loc[i, "Financing"])
+                    or pd.isna(df.loc[i, "BASE"])
+                    or df.loc[i, "BASE"] == 0
+                ):
                     continue
                 else:
-                    rate.append(df.loc[i, "Financing"]/df.loc[i, "BASE"])
+                    rate.append(df.loc[i, "Financing"] / df.loc[i, "BASE"])
             refund_rate[key] = np.mean(rate)
-        #print(f"key : {key}")
-        
+        # print(f"key : {key}")
+
         nb_LPP_codes[key] = len(df["CODE_LPP"].unique().tolist())
         nb_refunds[key] = df["Quantity"].sum()
-        
 
         if inflation_adjustment == True:
             if sector == "optical":
@@ -278,20 +296,21 @@ def gov_exp(inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]],
 
     return [expenditures, nb_LPP_codes, nb_refunds, refund_rate, base]
 
+
 # example : whole_hearing = gov_exp(inflation_adjustment=False, sector="hearing", mask={"AUDIOPROTHESES":["contains", "L_SC1", "or"]}, indent=4)
 
 
-def normalized_by_mean(list : List[int]):
+def normalized_by_mean(list: List[int]):
     normalized_list = []
-    mean=np.mean(list)
+    mean = np.mean(list)
     for int in list:
-        int = int/mean
+        int = int / mean
         normalized_list.append(int)
 
     return normalized_list
 
 
-#problem with JSON serializing (due to int64 format)
+# problem with JSON serializing (due to int64 format)
 def convert_to_native(obj):
     if isinstance(obj, np.integer):
         return int(obj)
