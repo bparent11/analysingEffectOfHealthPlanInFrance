@@ -296,9 +296,7 @@ def gov_exp(
 
     return [expenditures, nb_LPP_codes, nb_refunds, refund_rate, base]
 
-
 # example : whole_hearing = gov_exp(inflation_adjustment=False, sector="hearing", mask={"AUDIOPROTHESES":["contains", "L_SC1", "or"]}, indent=4)
-
 
 def normalized_by_mean(list: List[int]):
     normalized_list = []
@@ -308,7 +306,6 @@ def normalized_by_mean(list: List[int]):
         normalized_list.append(int)
 
     return normalized_list
-
 
 # problem with JSON serializing (due to int64 format)
 def convert_to_native(obj):
@@ -320,3 +317,135 @@ def convert_to_native(obj):
         return obj.tolist()
     else:
         raise TypeError(f"Type {type(obj)} not serializable")
+
+
+def gov_exp_by_age(
+    inflation_adjustment: bool, sector: str, mask: Dict[str, List[str]], indent: int
+):  # but this is exclusive mask, I have to do sth that can put a OR condition on the masks
+    expenditures = (
+        {}
+    )  # we can take a dict as an arg, and iterate on it in a loop to filter 1 time the data with 1 mask, a 2nd time with a 2nd mask, ... until we reach the len of the dict. {"L_SC1":["PROTHESES", (contains or ==)], "L_SC1":["VERRE",(contains or ==)], "L_SC2":["LUNETTES",(contains or ==)]}
+    if sector not in ["optical", "dental", "hearing", "all"]:
+        raise ValueError(
+            "'sector' argument has to be one of the four following : 'optical', 'dental', 'hearing', 'all'"
+        )
+    if mask == {}:
+        pass
+    else:
+        for k in mask:
+            if mask[k][0] not in ["equality", "contains"]:
+                raise ValueError(
+                    "The first value in mask's values has to be whether 'equality' or 'contains'"
+                )
+            if mask[k][1] not in ["L_SC1", "L_SC2", "L_CODE_LPP"]:
+                raise ValueError(
+                    "The second value in mask's values has to be 'L_SC1', 'L_SC2' or 'L_CODE_LPP'"
+                )
+            if len(mask) == 1:
+                pass
+            elif mask[k][2] not in ["and", "or"]:
+                raise ValueError(
+                    "The third value in mask's values has to be whether 'and' or 'or'"
+                )
+
+    expend_by_age = {}
+
+    elements = os.listdir("../Open-LPP-data/base_complete")
+    for i in range(int(len(elements) / 2) - indent):
+        age = {}
+        df = pd.read_csv(
+            f"../Open-LPP-data/base_complete/OPEN_LPP_{(i+2014+indent)}.CSV",
+            encoding="ISO-8859-1",
+            sep=";",
+        )
+
+        final_mask = None
+        if mask == {}:
+            pass
+        else:
+            for filter in mask:
+                if (mask[filter][0] == "equality") & (mask[filter][1] == "L_SC1"):
+                    new_mask = df[mask[filter][1]] == filter
+                elif (mask[filter][0] == "equality") & (mask[filter][1] == "L_SC2"):
+                    new_mask = df[mask[filter][1]] == filter
+
+                elif (mask[filter][0] == "equality") & (
+                    mask[filter][1] == "L_CODE_LPP"
+                ):
+                    new_mask = df[mask[filter][1]] == filter
+
+                elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_SC1"):
+                    regex_pattern = rf"\b{filter}\b"
+                    new_mask = df[mask[filter][1]].str.contains(
+                        regex_pattern, case=False, na=False
+                    )
+
+                elif (mask[filter][0] == "contains") & (mask[filter][1] == "L_SC2"):
+                    regex_pattern = rf"\b{filter}\b"
+                    new_mask = df[mask[filter][1]].str.contains(
+                        regex_pattern, case=False, na=False
+                    )
+
+                elif (mask[filter][0] == "contains") & (
+                    mask[filter][1] == "L_CODE_LPP"
+                ):
+                    regex_pattern = rf"\b{filter}\b"
+                    new_mask = df[mask[filter][1]].str.contains(
+                        regex_pattern, case=False, na=False
+                    )
+
+                # print(i + 2014+indent)
+                if final_mask is None:
+                    final_mask = new_mask
+                else:
+                    if mask[filter][2] == "and":
+                        final_mask = final_mask & new_mask
+                    else:
+                        final_mask = final_mask | new_mask
+
+            df = df[final_mask]
+
+        df = pd.DataFrame(
+            {
+#                "L_SC1": df["L_SC1"],
+#                "L_SC2": df["L_SC2"],
+#                "CODE_LPP": df["CODE_LPP"],
+#                "L_CODE_LPP": df["L_CODE_LPP"],
+#                "Quantity": df["QTE"],
+                "Financing": df["REM"],
+#                "BASE": df["BSE"],
+                "AGE":df["AGE"]
+            }
+        )
+
+        sum0_20 = df[df["AGE"]==0]["Financing"].sum()
+        len0_20 = len(df[df["AGE"]==0])
+
+        sum20_40 = df[df["AGE"]==20]["Financing"].sum()
+        len20_40 = len(df[df["AGE"]==20])
+
+        sum40_60 = df[df["AGE"]==40]["Financing"].sum()
+        len40_60 = len(df[df["AGE"]==40])
+
+        sum60_100 = df[df["AGE"]==60]["Financing"].sum()
+        len60_100 = len(df[df["AGE"]==60])
+
+        sum_unknown = df[df["AGE"]==99]["Financing"].sum()
+        lenunknown = len(df[df["AGE"]==99])
+
+        key = str(i + 2014)
+
+        sum_list = [sum0_20, sum20_40, sum40_60, sum60_100]
+        len_list = [len0_20, len20_40, len40_60, len60_100]
+
+        for i in range(4):
+            #if i == 4:
+            #    age["unknown"] = [lenunknown, sum_unknown], really non-significant
+            #else:
+            age[f"{i*20}-{(i+1)*20}"] = [len_list[i], sum_list[i]]
+
+        expend_by_age[key] = age
+
+    #expand_by_age={"year":{"0-20":[len, expenditures]}}
+
+    return expend_by_age
