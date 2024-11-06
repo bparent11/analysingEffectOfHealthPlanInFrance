@@ -250,7 +250,13 @@ def gov_exp(
             }
         )
 
-        # print(df[["L_CODE_LPP"]].head(10))  # pour vérifier manuellement si les filtres sont bien appliqués
+        df = df[df["L_CODE_LPP"].str.contains("PILES", case=False, na=False)]
+
+        #print((i+2014+indent))
+        #dfprinted = pd.concat([df["L_CODE_LPP"], df["Quantity"]], axis=1)
+        #return dfprinted
+
+        #print(df["L_CODE_LPP"].unique())  # pour vérifier manuellement si les filtres sont bien appliqués
 
         df.reset_index(inplace=True)
         df.drop(columns="index", inplace=True)
@@ -411,7 +417,7 @@ def gov_exp_by_age(
 #                "L_SC2": df["L_SC2"],
 #                "CODE_LPP": df["CODE_LPP"],
 #                "L_CODE_LPP": df["L_CODE_LPP"],
-#                "Quantity": df["QTE"],
+                "Quantity": df["QTE"],
                 "Financing": df["REM"],
 #                "BASE": df["BSE"],
                 "AGE":df["AGE"]
@@ -420,32 +426,375 @@ def gov_exp_by_age(
 
         sum0_20 = df[df["AGE"]==0]["Financing"].sum()
         len0_20 = len(df[df["AGE"]==0])
+        qte0_20 = df[df["AGE"]==0]["Quantity"].sum()
 
         sum20_40 = df[df["AGE"]==20]["Financing"].sum()
         len20_40 = len(df[df["AGE"]==20])
+        qte20_40 = df[df["AGE"]==20]["Quantity"].sum()
 
         sum40_60 = df[df["AGE"]==40]["Financing"].sum()
         len40_60 = len(df[df["AGE"]==40])
+        qte40_60 = df[df["AGE"]==40]["Quantity"].sum()
 
         sum60_100 = df[df["AGE"]==60]["Financing"].sum()
         len60_100 = len(df[df["AGE"]==60])
+        qte60_100 = df[df["AGE"]==60]["Quantity"].sum()
 
-        sum_unknown = df[df["AGE"]==99]["Financing"].sum()
-        lenunknown = len(df[df["AGE"]==99])
+        #sum_unknown = df[df["AGE"]==99]["Financing"].sum()
+        #lenunknown = len(df[df["AGE"]==99])
+        #qte_unknown = df[df["AGE"]==99]["Quantity"].sum()
 
         key = str(i + 2014)
 
         sum_list = [sum0_20, sum20_40, sum40_60, sum60_100]
         len_list = [len0_20, len20_40, len40_60, len60_100]
+        qte_list = [qte0_20, qte20_40, qte40_60, qte60_100]
 
         for i in range(4):
             #if i == 4:
             #    age["unknown"] = [lenunknown, sum_unknown], really non-significant
             #else:
-            age[f"{i*20}-{(i+1)*20}"] = [len_list[i], sum_list[i]]
+            age[f"{i*20}-{(i+1)*20}"] = [len_list[i], sum_list[i], qte_list[i]]
 
         expend_by_age[key] = age
 
     #expand_by_age={"year":{"0-20":[len, expenditures]}}
 
     return expend_by_age
+
+
+def getting_df_with_age(with_interaction = True):
+    with open("../data/results/L_SC1_SC2_LPP_gov_exp_raw.json") as f:
+        L_SC1 = json.load(f)
+
+    list_group=list(L_SC1.keys())
+
+    to_remove = ['CODES ARRIVES A ECHEANCE', 
+    'ACCESSOIRES DE PRODUITS INSCRITS AU TITRE III', 
+    "DISPOSITIFS MEDICAUX UTILISES DANS LE SYSTEME GASTRO-INTESTINAL", 
+    "DISPOSITIFS MEDICAUX UTILISES DANS LE SYSTEME URO-GENITAL", 
+    "DISPOSITIFS MEDICAUX UTILISES EN NEUROLOGIE", 
+    "DISPOSITIFS MEDICAUX UTILISES EN ONCOLOGIE", 
+    "DM, MATERIELS ET PRODUITS POUR LE TRAITEMENT DE PATHOLOGIES SPECIFIQUES", 
+    'DISPOSITIFS MEDICAUX UTILISES DANS LE SYST CARDIO-VASCULAIRE',
+    "DISPOISTIFS MEDICAUX UTILISES DANS LE SYSTEME CARDIO_VASCULAIRE",
+    'DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPES',
+    "DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPE",
+    'DMI ISSUS DE DERIVES ORIGINE ANIMALE NON VIABLES OU EN COMPORTANT', 
+    'IMPLANTS ISSUS DE DERIVES HUMAINS_GREFFONS',
+    "IMPLANTS ISSUS DE DERIVES HUMAINS-GREFFONS",
+    'PODO_ORTHESES',
+    "PODO-ORTHESES",
+    ]
+    #problem was that some elements was missing with these title, or the expends were constant.
+
+    for element in to_remove:
+        if element in list_group:
+            list_group.remove(element)
+
+    #count = 0
+    variable_dict = {}
+    dfs = [] # Liste pour stocker les DataFrames, plus rapide que de concat à chaque itération
+    #years = [i+2014 for i in range(10)]
+
+    for title in list_group:
+        print(title)
+        variable_name = title
+        #print(variable_name, type(variable_name))
+        if title in ["AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEURS"]:
+            continue
+
+        elif title == "AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEUR":
+            variable_dict[variable_name] = gov_exp_by_age(
+                inflation_adjustment=False,
+                sector="all",
+                mask={title: ["equality", "L_SC1", "or"], "AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEURS":["equality", "L_SC1", "or"]},
+                indent=0,
+            )
+
+        #elif title == "DISPOISTIFS MEDICAUX UTILISES DANS LE SYSTEME CARDIO_VASCULAIRE":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "DISPOSITIFS MEDICAUX UTILISES DANS LE SYSTEME CARDIO-VASCULAIRE":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        #elif title == "DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPE":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPES":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        #elif title == "IMPLANTS ISSUS DE DERIVES HUMAINS-GREFFONS":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "IMPLANTS ISSUS DE DERIVES HUMAINS_GREFFONS":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        #elif title == "PODO-ORTHESES":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "PODO_ORTHESES":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        else:
+            variable_dict[variable_name] = gov_exp_by_age(
+                inflation_adjustment=False,
+                sector="all",
+                mask={title: ["equality", "L_SC1", "and"]},
+                indent=0,
+            )
+
+        print(f"got all '{title} expenditures'")
+
+        data = []
+
+        for year, age_data in variable_dict[variable_name].items():
+            for age_range, values in age_data.items():
+                data.append({
+                    "year": year,
+                    "age_range": age_range,
+                    #"treatment": treatment[k],
+                    "expenditures": values[1],
+                    "quantities": values[2],
+                    "group":title,
+                })
+
+        df = pd.DataFrame(data)
+
+        print(df)
+
+        print(f"got {title} df")
+        dfs.append(df)
+
+    df_final = pd.concat(dfs, axis=0)
+        #if i == 0:
+        #    df_final = df
+        #    i+=1
+        #else:
+        #    df_final = pd.concat([df_final, df], axis=0)
+
+    df_final = pd.get_dummies(df_final, columns=['group'], prefix='', prefix_sep='')
+    df_final = pd.get_dummies(df_final, columns=['year'], prefix='', prefix_sep='')
+    df_final = pd.get_dummies(df_final, columns=['age_range'], prefix='', prefix_sep='')
+
+    if with_interaction == True:
+        for col in df_final.filter(like="20").columns:
+            df_final[f"interact. audio x year{col}"] = df_final["AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEUR"] * df_final[col]
+            df_final[f"interact. optique x year{col}"] = df_final["OPTIQUE MEDICALE"] * df_final[col]
+            df_final[f"interact. (audio+optical) x year{col}"] = (df_final["AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEUR"]+df_final["OPTIQUE MEDICALE"]) * df_final[col]
+        return df_final
+
+    else:
+        return df_final
+    
+
+
+def getting_df_without_age(with_interaction = True):
+    with open("../data/results/L_SC1_SC2_LPP_gov_exp_raw.json") as f:
+        L_SC1 = json.load(f)
+
+    list_group=list(L_SC1.keys())
+
+    to_remove = ['CODES ARRIVES A ECHEANCE', 
+    'ACCESSOIRES DE PRODUITS INSCRITS AU TITRE III', 
+    "DISPOSITIFS MEDICAUX UTILISES DANS LE SYSTEME GASTRO-INTESTINAL", 
+    "DISPOSITIFS MEDICAUX UTILISES DANS LE SYSTEME URO-GENITAL", 
+    "DISPOSITIFS MEDICAUX UTILISES EN NEUROLOGIE", 
+    "DISPOSITIFS MEDICAUX UTILISES EN ONCOLOGIE", 
+    "DM, MATERIELS ET PRODUITS POUR LE TRAITEMENT DE PATHOLOGIES SPECIFIQUES", 
+    'DISPOSITIFS MEDICAUX UTILISES DANS LE SYST CARDIO-VASCULAIRE',
+    "DISPOISTIFS MEDICAUX UTILISES DANS LE SYSTEME CARDIO_VASCULAIRE",
+    'DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPES',
+    "DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPE",
+    'DMI ISSUS DE DERIVES ORIGINE ANIMALE NON VIABLES OU EN COMPORTANT', 
+    'IMPLANTS ISSUS DE DERIVES HUMAINS_GREFFONS',
+    "IMPLANTS ISSUS DE DERIVES HUMAINS-GREFFONS",
+    'PODO_ORTHESES',
+    "PODO-ORTHESES",
+    ]
+    #problem was that some elements was missing with these title, or the expends were constant.
+
+    for element in to_remove:
+        if element in list_group:
+            list_group.remove(element)
+
+    #count = 0
+    variable_dict = {}
+    dfs = [] # Liste pour stocker les DataFrames, plus rapide que de concat à chaque itération
+    #years = [i+2014 for i in range(10)]
+
+    for title in list_group:
+        print(title)
+        variable_name = title
+        #print(variable_name, type(variable_name))
+        if title in ["AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEURS"]:
+            continue
+
+        elif title == "AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEUR":
+            variable_dict[variable_name] = gov_exp(
+                inflation_adjustment=False,
+                sector="all",
+                mask={title: ["equality", "L_SC1", "or"], "AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEURS":["equality", "L_SC1", "or"]},
+                indent=0,
+            )
+
+        #elif title == "DISPOISTIFS MEDICAUX UTILISES DANS LE SYSTEME CARDIO_VASCULAIRE":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "DISPOSITIFS MEDICAUX UTILISES DANS LE SYSTEME CARDIO-VASCULAIRE":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        #elif title == "DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPE":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "DM DE MAINTIEN A DOMICILE ET D AIDE A LA VIE POUR MALADES ET HANDICAPES":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        #elif title == "IMPLANTS ISSUS DE DERIVES HUMAINS-GREFFONS":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "IMPLANTS ISSUS DE DERIVES HUMAINS_GREFFONS":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        #elif title == "PODO-ORTHESES":
+        #    variable_dict[variable_name] = gov_exp_by_age(
+        #        inflation_adjustment=False,
+        #        sector="all",
+        #        mask={title: ["equality", "L_SC1", "or"], "PODO_ORTHESES":["equality", "L_SC1", "or"]},
+        #        indent=0,
+        #    )
+
+        else:
+            variable_dict[variable_name] = gov_exp(
+                inflation_adjustment=False,
+                sector="all",
+                mask={title: ["equality", "L_SC1", "and"]},
+                indent=0,
+            )
+
+        print(f"got all '{title} expenditures'")
+
+        #if group_name == "optical":
+        #    treatment = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1]
+        #elif group_name == "AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEUR":
+        #    treatment = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+        #else:
+        #    treatment = [0 for j in range(10)]
+
+        data = {
+            "year": variable_dict[variable_name][0].keys(),
+            "expenditures": variable_dict[variable_name][0].values(),
+            "nb_code_LPP": variable_dict[variable_name][1].values(),
+            "quantities": variable_dict[variable_name][2].values(),
+            "group":title,
+        }
+
+        df = pd.DataFrame(data)
+
+        print(df)
+
+        print(f"got {title} df")
+        dfs.append(df)
+
+    df_final = pd.concat(dfs, axis=0)
+        #if i == 0:
+        #    df_final = df
+        #    i+=1
+        #else:
+        #    df_final = pd.concat([df_final, df], axis=0)
+
+    df_final = pd.get_dummies(df_final, columns=['group'], prefix='', prefix_sep='')
+    df_final = pd.get_dummies(df_final, columns=['year'], prefix='', prefix_sep='')
+
+    if with_interaction == True:
+        for col in df_final.filter(like="20").columns:
+            df_final[f"interact. audio x year{col}"] = df_final["AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEUR"] * df_final[col]
+            df_final[f"interact. optique x year{col}"] = df_final["OPTIQUE MEDICALE"] * df_final[col]
+            df_final[f"interact. (audio+optical) x year{col}"] = (df_final["AUDIOPROTHESES ET ENTRETIEN, REPARATIONS ET ACCESSOIRES POUR PROCESSEUR"]+df_final["OPTIQUE MEDICALE"]) * df_final[col]
+        return df_final
+
+    else:
+        return df_final
+    
+
+def gov_exp_dental(cent_santé=False, to_keep=[]):
+    elements = os.listdir("../Open-CCAM-data")
+    unique_values = []
+
+    expenditures = {}
+    #nb_LPP_codes = {}
+    nb_refunds = {}
+    refund_rate = {}
+    base = {}
+
+    for i in range(len(elements)):
+        if (i+2015) in [2015, 2016, 2017, 2018, 2019]:
+            df=pd.read_excel(f'../Open-CCAM-data/{i+2015}_CCAM.xls', sheet_name=1)
+        else:
+            df=pd.read_excel(f'../Open-CCAM-data/{i+2015}_CCAM.xlsx', sheet_name=1)
+
+        #print(i+2015)
+        
+        if cent_santé == True:
+            mask = df["Libellé long"].isin(to_keep)
+            df = df[mask]
+
+        df = pd.DataFrame(
+            {
+                "Complet": df.iloc[:, 2],
+                "Lib. long" : df.iloc[:,1],
+                #"Cat. acte": df.iloc[:, -2],
+                #"Sous-cat. acte": df.iloc[:, -1],
+                "QTE": df.iloc[:, -5],
+                "REM": df.iloc[:, -3],
+                "BSE": df.iloc[:, -4],
+            }
+        )
+        
+        df.reset_index(inplace=True)
+        df.drop(columns="index", inplace=True)
+        df = df.dropna()
+        df = df.reset_index(drop=True)
+
+        key = str(i+2015)
+        
+        sum = df["REM"].sum()
+        base_sum = df["BSE"].sum()
+
+        expenditures[key] = sum
+        base[key] = base_sum
+
+        rate = []
+        if len(df) == 0:
+            refund_rate[key] = 0
+        else:
+            for i in range(len(df)):
+                if (
+                    pd.isna(df.loc[i, "REM"])
+                    or pd.isna(df.loc[i, "BSE"])
+                    or df.loc[i, "BSE"] == 0
+                ):
+                    continue
+                else:
+                    rate.append(df.loc[i, "REM"] / df.loc[i, "BSE"])
+            refund_rate[key] = np.mean(rate)
+        # print(f"key : {key}")
+
+        #nb_LPP_codes[key] = len(df["CODE_LPP"].unique().tolist())
+        nb_refunds[key] = df["QTE"].sum()
+
+    return [expenditures, nb_refunds, refund_rate, base]
