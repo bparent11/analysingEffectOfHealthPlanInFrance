@@ -250,7 +250,7 @@ def gov_exp(
             }
         )
 
-        df = df[df["L_CODE_LPP"].str.contains("PILES", case=False, na=False)]
+        #df = df[df["L_CODE_LPP"].str.contains("PILES", case=False, na=False)]
 
         #print((i+2014+indent))
         #dfprinted = pd.concat([df["L_CODE_LPP"], df["Quantity"]], axis=1)
