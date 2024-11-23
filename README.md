@@ -5,5 +5,5 @@ The "100% Santé" plan was implemented in January 2021 within the French healthc
 
 To see the results, you can take a look at the regression-reference2017.ipynb file. You'll be able to see all of the regression on the data.
 
-If you want to see how did we filter and sort the data, you can take a look at filtering_data.ipynb, functions.py, work_on_dental_field.ipynb, mean.ipynb and governmental-expenditures.ipynb files (in addition to "plot" directory). 
+If you want to see how did we filter and sort the data, you can take a look at filtering_data.ipynb, functions.py, work_on_dental_field.ipynb and governmental-expenditures.ipynb files (in addition to "plot" directory). 
 The main idea is available on functions.py file, you'll be able to understand how does it work in general.
